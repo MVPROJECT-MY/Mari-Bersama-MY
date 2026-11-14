@@ -2403,5 +2403,16 @@ let bootErr=null;
 })();
 </script>
 
+  <script>
+setInterval(function(){
+  document.querySelectorAll('div, a, iframe').forEach(function(el){
+    if(el.textContent && el.textContent.includes('Powered by Netlify')){
+      el.style.display = 'none';
+    }
+  });
+}, 500);
+</script>
+
 </body>
+
 </html>
