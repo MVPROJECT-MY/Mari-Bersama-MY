@@ -1,0 +1,333 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Jenis akaun mengikut cara log masuk
+    function expectedKind() {
+      return request.auth.token.firebase.sign_in_provider == 'anonymous' ? 'guest'
+           : request.auth.token.firebase.sign_in_provider == 'google.com' ? 'google'
+           : 'id';
+    }
+
+    // PTS mengikut subjek (Slip Keputusan)
+    // Setiap subjek: tiada atau integer >= 0 (subjek baharu tidak wujud pada akaun lama)
+    function segOk(s, k) {
+      return !(k in s) || (s[k] is int && s[k] >= 0);
+    }
+
+    function validSeg(s) {
+      return s is map
+        && s.keys().hasOnly(['riddle', 'science', 'history', 'math', 'flag',
+                             'malay', 'english', 'geo', 'islam', 'general', 'addmath', 'zoo', 'mytrivia'])
+        && segOk(s, 'riddle') && segOk(s, 'science') && segOk(s, 'history')
+        && segOk(s, 'math') && segOk(s, 'flag')
+        && segOk(s, 'malay') && segOk(s, 'english') && segOk(s, 'geo')
+        && segOk(s, 'islam') && segOk(s, 'general') && segOk(s, 'addmath')
+        && segOk(s, 'zoo') && segOk(s, 'mytrivia');
+    }
+
+    // Pencapaian yang dibenarkan (ID badge)
+    function validAch(a) {
+      return a is map
+        && a.keys().hasOnly(['first', 'p100', 'p500', 'p1000', 'genius', 'play10', 'streak3', 'streak7', 'allround',
+                             'master_malay', 'master_english', 'master_geo', 'master_islam', 'master_general',
+                             'master_science', 'master_history', 'master_riddle', 'master_math', 'master_addmath', 'master_flag', 'master_zoo', 'master_mytrivia']);
+    }
+
+    // Integer pilihan: tiada, atau 0..mx
+    function optInt(d, k, mx) {
+      return !(k in d) || (d[k] is int && d[k] >= 0 && d[k] <= mx);
+    }
+
+    function optStr(d, k, mx) {
+      return !(k in d) || (d[k] is string && d[k].size() <= mx);
+    }
+
+
+    // ----- Sosial -----
+    function pairOf(o) {
+      return o < request.auth.uid ? o + '_' + request.auth.uid : request.auth.uid + '_' + o;
+    }
+
+    function areFriends(o) {
+      return exists(/databases/$(database)/documents/friends/$(pairOf(o)))
+        && get(/databases/$(database)/documents/friends/$(pairOf(o))).data.status == 'accepted';
+    }
+
+    function canSee(owner) {
+      return signedIn() && (request.auth.uid == owner || areFriends(owner));
+    }
+
+    function isBlockedBy(o) {
+      return exists(/databases/$(database)/documents/users/$(o)/blocked/$(request.auth.uid));
+    }
+
+    // ID awam: kosong -> tetapkan, atau tukar (sekali dalam 30 hari)
+    function unameOk() {
+      let n = request.resource.data.get('uname', '');
+      let o = resource.data.get('uname', '');
+      return (n == o && request.resource.data.get('unameAt', null) == resource.data.get('unameAt', null))
+        || (n.matches('^[a-z0-9_]{3,16}$')
+            && request.resource.data.unameAt == request.time
+            && (!('unameAt' in resource.data) || request.time > resource.data.unameAt + duration.value(30, 'd')));
+    }
+
+    function kindOk() {
+      return request.resource.data.kind == resource.data.kind
+        || (resource.data.kind == 'guest' && request.resource.data.kind in ['google', 'id']);
+    }
+
+    function validProfile(d) {
+      return d.keys().hasOnly(['name', 'bio', 'avatar', 'points', 'played', 'seg', 'coins', 'streak', 'bestStreak',
+                               'lastDay', 'lastClaim', 'ach', 'title', 'kind', 'handle', 'uname', 'unameAt', 'vw', 'vl', 'vd', 'createdAt', 'updatedAt'])
+        && (!('seg' in d) || validSeg(d.seg))
+        && optInt(d, 'vw', 10000000) && optInt(d, 'vl', 10000000) && optInt(d, 'vd', 10000000)
+        && optInt(d, 'coins', 10000000) && optInt(d, 'streak', 100000) && optInt(d, 'bestStreak', 100000)
+        && optStr(d, 'uname', 16) && (!('unameAt' in d) || d.unameAt is timestamp)
+        && optStr(d, 'lastDay', 10) && optStr(d, 'lastClaim', 10) && optStr(d, 'title', 30)
+        && (!('ach' in d) || validAch(d.ach))
+        && d.name is string && d.name.size() >= 2 && d.name.size() <= 20
+        && d.bio is string && d.bio.size() <= 120
+        && d.avatar is string && d.avatar.size() <= 30000
+        && d.points is int && d.points >= 0
+        && d.played is int && d.played >= 0
+        && d.kind in ['guest', 'id', 'google']
+        && d.handle is string && d.handle.size() <= 16;
+    }
+
+    match /users/{uid} {
+      // Semua pemain yang sudah log masuk boleh baca (untuk ranking). Tiada e-mel disimpan.
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && validProfile(request.resource.data)
+        && request.resource.data.points == 0
+        && request.resource.data.played == 0
+        && request.resource.data.get('coins', 0) == 0
+        && request.resource.data.get('streak', 0) == 0
+        && request.resource.data.get('bestStreak', 0) == 0
+        && request.resource.data.get('vw', 0) == 0 && request.resource.data.get('vl', 0) == 0 && request.resource.data.get('vd', 0) == 0
+        && request.resource.data.kind == expectedKind()
+        && !('uname' in request.resource.data) && !('unameAt' in request.resource.data)
+        && (request.resource.data.kind == 'id'
+              ? request.resource.data.handle == request.auth.token.email.split('@')[0]
+              : request.resource.data.handle == '');
+
+      // Pemain hanya boleh ubah profil sendiri. Mata hanya boleh naik, maksimum 600 setiap simpanan.
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && validProfile(request.resource.data)
+        && kindOk()
+        && unameOk()
+        && request.resource.data.handle == resource.data.handle
+        && request.resource.data.points >= resource.data.points
+        && request.resource.data.points - resource.data.points <= 600
+        && request.resource.data.played >= resource.data.played
+        && request.resource.data.played - resource.data.played <= 1
+        // Syiling hanya boleh naik, maksimum 3000 setiap simpanan (kedai akan mengubah peraturan ini kemudian)
+        && request.resource.data.get('coins', 0) >= resource.data.get('coins', 0)
+        && request.resource.data.get('coins', 0) - resource.data.get('coins', 0) <= 3000
+        // Streak hanya boleh naik 1 setiap simpanan
+        && request.resource.data.get('streak', 0) <= resource.data.get('streak', 0) + 1
+        && request.resource.data.get('bestStreak', 0) <= resource.data.get('bestStreak', 0) + 1
+        // Rekod 1v1: hanya naik, maksimum +1 setiap simpanan
+        && request.resource.data.get('vw', 0) >= resource.data.get('vw', 0) && request.resource.data.get('vw', 0) <= resource.data.get('vw', 0) + 1
+        && request.resource.data.get('vl', 0) >= resource.data.get('vl', 0) && request.resource.data.get('vl', 0) <= resource.data.get('vl', 0) + 1
+        && request.resource.data.get('vd', 0) >= resource.data.get('vd', 0) && request.resource.data.get('vd', 0) <= resource.data.get('vd', 0) + 1;
+
+      allow delete: if false;
+    }
+
+    // Siaran, suka, komen: hanya pemilik dan rakan
+    match /users/{uid}/posts/{pid} {
+      allow read: if canSee(uid);
+      allow create: if request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['by', 'text', 'at'])
+        && request.resource.data.by == uid
+        && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 300
+        && request.resource.data.at == request.time;
+      allow update: if false;
+      allow delete: if request.auth.uid == uid;
+
+      match /likes/{lid} {
+        allow read: if canSee(uid);
+        allow create: if lid == request.auth.uid && canSee(uid)
+          && request.resource.data.keys().hasOnly(['at']);
+        allow update: if false;
+        allow delete: if lid == request.auth.uid;
+      }
+
+      match /comments/{cid} {
+        allow read: if canSee(uid);
+        allow create: if canSee(uid)
+          && request.resource.data.keys().hasOnly(['by', 'text', 'at'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 200
+          && request.resource.data.at == request.time;
+        allow update: if false;
+        allow delete: if request.auth.uid == uid || resource.data.by == request.auth.uid;
+      }
+    }
+
+    // Senarai sekat (hanya pemilik)
+    match /users/{uid}/blocked/{bid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['at']);
+      allow update: if false;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ID awam -> uid
+    match /usernames/{name} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && name.matches('^[a-z0-9_]{3,16}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('uname', '') == name;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Cover photo
+    match /covers/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['img'])
+        && request.resource.data.img is string && request.resource.data.img.size() <= 70000;
+    }
+
+    // Rakan: id dokumen = uid kecil + '_' + uid besar
+    match /friends/{fid} {
+      allow get: if signedIn() && (resource == null || resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
+      allow list: if signedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['a', 'b', 'from', 'status', 'at'])
+        && request.resource.data.a < request.resource.data.b
+        && fid == request.resource.data.a + '_' + request.resource.data.b
+        && (request.resource.data.a == request.auth.uid || request.resource.data.b == request.auth.uid)
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.at == request.time
+        && !isBlockedBy(request.resource.data.a == request.auth.uid ? request.resource.data.b : request.resource.data.a);
+      allow update: if signedIn()
+        && resource.data.status == 'pending'
+        && resource.data.from != request.auth.uid
+        && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status == 'accepted';
+      allow delete: if signedIn() && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
+    }
+
+    // Chat antara rakan. id = pasangan uid (sama seperti rakan)
+    function chatOther(cid) {
+      let ps = cid.split('_');
+      return ps[0] == request.auth.uid ? ps[1] : ps[0];
+    }
+
+    match /chats/{cid} {
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.p);
+      allow list: if signedIn() && request.auth.uid in resource.data.p;
+      allow create: if signedIn()
+        && request.auth.uid in cid.split('_')
+        && request.resource.data.keys().hasOnly(['p', 'last', 'lastBy', 'lastAt', 'read0', 'read1'])
+        && request.resource.data.p == cid.split('_')
+        && request.resource.data.lastBy == request.auth.uid
+        && request.resource.data.last is string && request.resource.data.last.size() <= 60
+        && request.resource.data.lastAt is int
+        && request.resource.data.read0 is int && request.resource.data.read1 is int
+        && areFriends(chatOther(cid));
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.p
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'lastBy', 'lastAt', 'read0', 'read1'])
+        && (request.resource.data.lastBy == request.auth.uid || request.resource.data.lastBy == resource.data.lastBy)
+        && (request.resource.data.read0 == resource.data.read0 || request.auth.uid == resource.data.p[0])
+        && (request.resource.data.read1 == resource.data.read1 || request.auth.uid == resource.data.p[1])
+        && request.resource.data.last is string && request.resource.data.last.size() <= 60
+        && request.resource.data.lastAt is int && request.resource.data.read0 is int && request.resource.data.read1 is int;
+      allow delete: if false;
+
+      match /msgs/{mid} {
+        allow read: if signedIn() && request.auth.uid in cid.split('_');
+        allow create: if signedIn()
+          && request.auth.uid in cid.split('_')
+          && areFriends(chatOther(cid))
+          && !isBlockedBy(chatOther(cid))
+          && request.resource.data.keys().hasOnly(['by', 'text', 'at'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 300
+          && request.resource.data.at == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    // Versus 1v1: soalan disimpan dalam dokumen perlawanan; setiap pemain tulis jawapan sendiri
+    function isPlayer(mid) {
+      return request.auth.uid in get(/databases/$(database)/documents/matches/$(mid)).data.players;
+    }
+
+    match /matches/{mid} {
+      allow get: if signedIn() && request.auth.uid in resource.data.players;
+      allow list: if signedIn() && request.auth.uid in resource.data.players;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['a', 'b', 'players', 'type', 'qs', 'status', 'at', 'startAt'])
+        && request.resource.data.a == request.auth.uid
+        && request.resource.data.b is string && request.resource.data.b != request.auth.uid
+        && request.resource.data.players == [request.auth.uid, request.resource.data.b]
+        && areFriends(request.resource.data.b)
+        && !isBlockedBy(request.resource.data.b)
+        && request.resource.data.type in ['math', 'addmath', 'zoo', 'mytrivia', 'flag']
+        && request.resource.data.qs is list && request.resource.data.qs.size() == 10
+        && request.resource.data.status == 'pending'
+        && request.resource.data.at == request.time
+        && request.resource.data.startAt == 0;
+      allow update: if signedIn() && request.auth.uid in resource.data.players
+        && (
+          // penerima menerima atau menolak
+          (resource.data.status == 'pending' && request.auth.uid == resource.data.b
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'startAt'])
+            && request.resource.data.status in ['live', 'declined']
+            && request.resource.data.startAt is int)
+          ||
+          // selesai: rekod markah akhir
+          (resource.data.status == 'live'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sa', 'sb'])
+            && request.resource.data.status == 'done'
+            && request.resource.data.sa is int && request.resource.data.sb is int
+            && request.resource.data.sa >= 0 && request.resource.data.sa <= 150
+            && request.resource.data.sb >= 0 && request.resource.data.sb <= 150)
+        );
+      allow delete: if signedIn() && request.auth.uid == resource.data.a && resource.data.status == 'pending';
+
+      match /ans/{uid} {
+        allow read: if signedIn() && isPlayer(mid);
+        allow create, update: if signedIn() && request.auth.uid == uid && isPlayer(mid)
+          && get(/databases/$(database)/documents/matches/$(mid)).data.status in ['live', 'done']
+          && request.resource.data.keys().hasOnly(['a', 't', 'done', 'paid'])
+          && (!('a' in request.resource.data) || (request.resource.data.a is list && request.resource.data.a.size() <= 10))
+          && (!('t' in request.resource.data) || (request.resource.data.t is list && request.resource.data.t.size() <= 10))
+          && (!('done' in request.resource.data) || request.resource.data.done is bool)
+          && (!('paid' in request.resource.data) || request.resource.data.paid is bool);
+        allow delete: if false;
+      }
+    }
+
+    // Laporan: pemain boleh hantar sahaja. Admin baca melalui Firebase Console.
+    match /reports/{id} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['by', 'who', 'why', 'msg', 'at', 'type', 'ref'])
+        && optStr(request.resource.data, 'type', 10) && optStr(request.resource.data, 'ref', 80)
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.who is string && request.resource.data.who.size() <= 30
+        && request.resource.data.why is string && request.resource.data.why.size() <= 60
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 300;
+      allow read, update, delete: if false;
+    }
+  }
+}
