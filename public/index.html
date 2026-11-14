@@ -1302,7 +1302,7 @@ function enter(){
   if(u){dflt(u);const g=checkAch(u,null);if(g.length){saveUser(u);setTimeout(()=>toast('Pencapaian baharu: '+g.map(a=>a.name).join(', ')),500)}}
   refreshTop();show('home');
   startListen();
-  if(isOn()&&cur.kind==='id'&&!cur.uname&&cur.handle)claimUname(cur.handle).catch(console.error);
+  if(isOn()&&!cur.uname)autoUname().then(()=>{if(current==='settings')renderAccount();refreshTop()}).catch(console.error);
 }
 $$('[data-go]').forEach(b=>b.onclick=()=>{sfx.click();if(!getUser())return;show(b.dataset.go)});
 
@@ -1776,18 +1776,27 @@ function btn(txt,cls,fn){const b=mk('button',cls||'sm');if(txt.charAt(0)==='<')b
 const guard=async(fn)=>{try{return await fn()}catch(e){console.error(e);toast(errMsg(e))}};
 
 /* ----- ID awam ----- */
-async function claimUname(name){
+async function claimUname(name,auto){
   const u=cur;name=name.trim().toLowerCase();
   if(!UNAME_RE.test(name))throw new Error('ID: 3-16 aksara (huruf kecil, nombor, _)');
   if(name===u.uname)throw new Error('Itu ID anda sekarang');
-  if(u.uname&&u.unameAt&&Date.now()<u.unameAt+MONTH)throw new Error('ID hanya boleh ditukar sebulan sekali');
+  if(!auto&&u.uname&&u.unameAt&&Date.now()<u.unameAt+MONTH)throw new Error('ID hanya boleh ditukar sebulan sekali');
   if((await F.getDoc(F.doc(F.db,'usernames',name))).exists())throw new Error('ID sudah digunakan');
   const b=F.writeBatch(F.db);
   b.set(F.doc(F.db,'usernames',name),{uid:u.uid});
   if(u.uname)b.delete(F.doc(F.db,'usernames',u.uname));
-  b.update(F.doc(F.db,'users',u.uid),{uname:name,unameAt:F.serverTimestamp()});
+  b.update(F.doc(F.db,'users',u.uid),auto?{uname:name}:{uname:name,unameAt:F.serverTimestamp()});
   await b.commit();
-  u.uname=name;u.unameAt=Date.now();delete UC[u.uid];
+  u.uname=name;if(!auto)u.unameAt=Date.now();delete UC[u.uid];
+}
+// ID awam dijana automatik semasa pertama kali (boleh ditukar percuma sekali, selepas itu sebulan sekali)
+async function autoUname(){
+  const u=cur;if(!u||u.uname||!isOn())return;
+  const base=(u.kind==='id'&&UNAME_RE.test(u.handle||''))?u.handle:null;
+  for(let i=0;i<8;i++){
+    const n=(i===0&&base)?base:'pemain'+rnd(10000,99999);
+    try{await claimUname(n,true);return}catch(e){if(e&&/sudah digunakan/.test(e.message))continue;throw e}
+  }
 }
 async function findByUname(name){
   name=name.trim().toLowerCase().replace(/^@/,'');
@@ -1803,7 +1812,7 @@ function renderAccount(){
   $('#st-uname').value=u.uname||'';
   const lock=u.uname&&u.unameAt&&Date.now()<u.unameAt+MONTH;
   $('#st-uname').disabled=!on||lock;$('#st-uname-save').disabled=!on||lock;
-  $('#st-uname-note').textContent=!on?'Perlu mod online.':lock?'Boleh ditukar semula pada '+new Date(u.unameAt+MONTH).toLocaleDateString('ms-MY')+'.':(u.uname?'Anda boleh tukar ID sekarang. Selepas itu perlu tunggu 30 hari. ID log masuk tidak berubah.':'Pilih ID awam supaya rakan boleh mencari anda.');
+  $('#st-uname-note').textContent=!on?'Perlu mod online.':lock?'Boleh ditukar semula pada '+new Date(u.unameAt+MONTH).toLocaleDateString('ms-MY')+'.':(u.uname?(u.unameAt?'Anda boleh tukar ID sekarang. Selepas itu perlu tunggu 30 hari. ID log masuk tidak berubah.':'ID ini dijana automatik. Anda boleh tukar sekali sekarang, selepas itu sebulan sekali. ID log masuk tidak berubah.'):'Pilih ID awam supaya rakan boleh mencari anda.');
   $('#st-link').hidden=!(on&&u.guest);
 }
 $('#st-uname-save').onclick=()=>guard(async()=>{
@@ -2354,7 +2363,12 @@ async function vsResult(){
     gain=Math.floor(ms/COIN_RATE)+(out==='win'?20:0);u.coins=(u.coins||0)+gain;
     const key=out==='win'?'vw':out==='lose'?'vl':'vd';u[key]=(u[key]||0)+1;
     got=checkAch(u,{perfect:right===VS_N});
+    // Log perlawanan terus ke pelayan (admin nampak walaupun simpanan statistik pemain gagal)
+    const lref=F.doc(F.db,'matchLog',m.id+'_'+cur.uid);
+    const lset=F.setDoc(lref,{uid:cur.uid,mid:m.id,type:m.type,pts:Math.min(ms,400),coins:Math.min(gain,500),res:out==='win'?'w':out==='lose'?'l':'d',me:ms,opp:os,at:F.serverTimestamp(),ok:false}).catch(e=>console.warn('matchLog',e&&e.code));
     const saved=await saveUser(u);refreshTop();
+    await lset;
+    if(saved)F.updateDoc(lref,{ok:true}).catch(()=>{});
     if(saved)F.setDoc(st.ref,{paid:true},{merge:true}).catch(console.error);
     else VSPENDING[cur.uid+m.id]=st.ref;   // ditanda 'paid' hanya selepas simpanan berjaya
     st.paid=true;

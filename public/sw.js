@@ -1,6 +1,6 @@
 /* Service worker Mari Bersama: boleh dibuka tanpa internet selepas dimuat sekali.
    Tukar nombor VERSI jika mahu paksa cache lama dibersihkan. */
-const VERSI = 'mb-v13';
+const VERSI = 'mb-v14';
 const SHELL = ['./', 'index.html', 'manifest.json', 'splash.webp', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

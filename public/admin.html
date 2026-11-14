@@ -71,6 +71,7 @@ label{display:block;margin:10px 0 4px;color:var(--mut);font-size:13px}
     <button data-t="home" class="on">Ringkasan</button>
     <button data-t="players">Pemain</button>
     <button data-t="reports">Laporan &amp; Aduan <span class="tag new" id="n-rep" hidden></span></button>
+    <button data-t="log">Markah Perlawanan <span class="tag new" id="n-log" hidden></span></button>
     <button data-t="ann">Siaran</button>
     <button data-t="bans">Sekatan</button>
   </nav>
@@ -78,6 +79,7 @@ label{display:block;margin:10px 0 4px;color:var(--mut);font-size:13px}
     <section id="t-home"></section>
     <section id="t-players" hidden></section>
     <section id="t-reports" hidden></section>
+    <section id="t-log" hidden></section>
     <section id="t-ann" hidden></section>
     <section id="t-bans" hidden></section>
   </div>
@@ -124,8 +126,8 @@ $('#b-refresh').onclick=()=>show(cur);
 let cur='home';
 $$('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
 function show(t){cur=t;$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  ['home','players','reports','ann','bans'].forEach(k=>$('#t-'+k).hidden=k!==t);
-  ({home:vHome,players:vPlayers,reports:vReports,ann:vAnn,bans:vBans})[t]()}
+  ['home','players','reports','log','ann','bans'].forEach(k=>$('#t-'+k).hidden=k!==t);
+  ({home:vHome,players:vPlayers,reports:vReports,log:vLog,ann:vAnn,bans:vBans})[t]()}
 
 async function nameOf(uid){
   if(!uid)return'-';if(nameCache[uid])return nameCache[uid];
@@ -247,6 +249,27 @@ function repCard(d){
       isU?h('button',{class:'sm',onclick:()=>openPlayer(v.ref)},'Buka pemain dilapor'):null,
       v.status?null:h('button',{class:'sm ok',onclick:()=>act(async()=>{await F.updateDoc(F.doc(F.db,'reports',d.id),{status:'selesai'});vReports()})},'Tanda selesai'),
       h('button',{class:'sm bad',onclick:()=>act(async()=>{if(!confirm('Padam laporan ini?'))return;await F.deleteDoc(F.doc(F.db,'reports',d.id));vReports()})},'Padam')));
+}
+
+/* ===== Markah perlawanan (log terus daripada pemain) ===== */
+let logFilter='all';
+async function vLog(){
+  const box=$('#t-log');box.replaceChildren(h('p',{class:'mut'},'Memuatkan...'));
+  let docs=[];try{docs=(await F.getDocs(F.query(F.collection(F.db,'matchLog'),F.orderBy('at','desc'),F.limit(150)))).docs}catch(e){console.error(e);toast(errTxt(e))}
+  const pend=docs.filter(d=>d.data().ok===false).length;$('#n-log').hidden=!pend;$('#n-log').textContent=pend;
+  const flt=docs.filter(d=>logFilter==='all'||d.data().ok===false);
+  const bar=h('div',{class:'row',style:'margin-bottom:12px'},[['all','Semua'],['pend','Belum masuk statistik pemain']].map(([k,l])=>h('button',{class:logFilter===k?'sm pri':'sm',onclick:()=>{logFilter=k;vLog()}},l)));
+  const rows=flt.map(d=>{const v=d.data(),nm=h('b',null,'...');nameOf(v.uid).then(n=>nm.textContent=n);
+    const res={w:'Menang',l:'Kalah',d:'Seri'}[v.res]||v.res;
+    return h('div',{class:'li',style:'cursor:default'},h('div',{class:'g',style:'white-space:normal'},nm,
+        h('div',{class:'mut'},res+' '+v.me+'–'+v.opp+' · '+v.type+' · +'+fmt(v.pts)+' PTS · +'+fmt(v.coins)+' syiling · '+when(v.at))),
+      v.ok?h('span',{class:'tag ok'},'Masuk'):h('button',{class:'sm ok',onclick:()=>act(async()=>{
+        if(!confirm('Tambah +'+v.pts+' PTS, +'+v.coins+' syiling dan 1 '+res+' kepada pemain ini?'))return;
+        const up={points:F.increment(v.pts),played:F.increment(1),coins:F.increment(v.coins),updatedAt:sv()};
+        up[v.res==='w'?'vw':v.res==='l'?'vl':'vd']=F.increment(1);
+        await F.updateDoc(F.doc(F.db,'users',v.uid),up);await F.updateDoc(F.doc(F.db,'matchLog',d.id),{ok:true});toast('Dimasukkan ke statistik pemain');vLog()})},'Masukkan'))});
+  box.replaceChildren(bar,h('div',{class:'card'},h('h3',null,'Markah perlawanan ('+flt.length+')'),
+    h('p',{class:'mut'},'Setiap perlawanan tamat dicatat terus ke sini. "Belum masuk" bermakna simpanan statistik pemain gagal; tekan Masukkan untuk membetulkannya.'),...(rows.length?rows:[h('p',{class:'mut'},'Tiada rekod.')])));
 }
 
 /* ===== Siaran ===== */
