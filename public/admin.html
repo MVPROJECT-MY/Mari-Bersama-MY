@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Mari Bersama</title>
+<style>
+:root{--bg:#0a1126;--surf:#111a35;--surf2:#17223f;--line:rgba(255,255,255,.1);--txt:#eef2ff;--mut:#9fb0e0;--pri:#4cb4ff;--ok:#2ecc8f;--bad:#ff5c7a;--warn:#ffc72c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
+header b{font-size:17px}header .sp{flex:1}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;border-bottom:1px solid var(--line)}
+nav button{white-space:nowrap}
+button,select,input,textarea{font:inherit;color:var(--txt)}
+button{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--pri)}
+button.pri,nav button.on{background:var(--pri);color:#04122b;border-color:var(--pri);font-weight:700}
+button.bad{background:var(--bad);border-color:var(--bad);color:#2a0610;font-weight:700}
+button.ok{background:var(--ok);border-color:var(--ok);color:#052416;font-weight:700}
+button.sm{padding:5px 10px;font-size:13px}
+input,select,textarea{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+label{display:block;margin:10px 0 4px;color:var(--mut);font-size:13px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.stat{background:var(--surf2);border-radius:12px;padding:12px}.stat b{display:block;font-size:24px}.stat span{color:var(--mut);font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mut{color:var(--mut);font-size:13px}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:var(--surf2);border:1px solid var(--line)}
+.tag.new{background:var(--warn);color:#2b2000;border-color:var(--warn)}.tag.bad{background:var(--bad);color:#2a0610;border-color:var(--bad)}.tag.ok{background:var(--ok);color:#052416;border-color:var(--ok)}
+.li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+.li:first-child{border-top:0}.li .g{flex:1;min-width:0}.li .g b,.li .g div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.msg{white-space:pre-wrap;background:var(--surf2);padding:8px 10px;border-radius:10px;margin:6px 0}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#000c;border:1px solid var(--line);padding:10px 16px;border-radius:12px;display:none;z-index:9;max-width:90vw}
+[hidden]{display:none!important}
+.center{max-width:420px;margin:12vh auto;padding:0 16px}
+.uid{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;background:var(--surf2);padding:6px 8px;border-radius:8px;display:block;margin:6px 0}
+</style>
+</head>
+<body>
+
+<div id="v-login" class="center" hidden>
+  <div class="card">
+    <h3>Admin · Mari Bersama</h3>
+    <p class="mut">Log masuk dengan akaun admin anda. Hanya UID yang didaftarkan di Firebase boleh masuk.</p>
+    <button class="pri" id="b-google" style="width:100%">Log masuk dengan Google</button>
+    <p class="mut" style="text-align:center">atau ID pemain</p>
+    <input id="l-id" placeholder="ID" autocomplete="username" maxlength="16">
+    <label>Kata laluan</label>
+    <input id="l-pw" type="password" autocomplete="current-password">
+    <button class="pri" id="b-login" style="width:100%;margin-top:12px">Log Masuk</button>
+  </div>
+</div>
+
+<div id="v-deny" class="center" hidden>
+  <div class="card">
+    <h3>Akaun ini bukan admin</h3>
+    <p class="mut">Untuk menjadikan akaun ini admin, buka Firebase Console &gt; Firestore Database &gt; Start collection <b>admins</b> &gt; Document ID = UID di bawah (field: <code>role</code> = <code>admin</code>), kemudian muat semula halaman ini.</p>
+    <span class="uid" id="deny-uid"></span>
+    <button id="b-out1" style="width:100%;margin-top:8px">Log keluar</button>
+  </div>
+</div>
+
+<div id="v-app" hidden>
+  <header><b>Admin Dashboard</b><span class="tag" id="who"></span><span class="sp"></span><button class="sm" id="b-refresh">Muat semula</button><button class="sm" id="b-out">Log keluar</button></header>
+  <nav id="tabs">
+    <button data-t="home" class="on">Ringkasan</button>
+    <button data-t="players">Pemain</button>
+    <button data-t="reports">Laporan &amp; Aduan <span class="tag new" id="n-rep" hidden></span></button>
+    <button data-t="ann">Siaran</button>
+    <button data-t="bans">Sekatan</button>
+  </nav>
+  <div class="wrap">
+    <section id="t-home"></section>
+    <section id="t-players" hidden></section>
+    <section id="t-reports" hidden></section>
+    <section id="t-ann" hidden></section>
+    <section id="t-bans" hidden></section>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script type="module">
+const CFG={apiKey:'AIzaSyA57SX4PkBxJWE_56ZnG6dPyFZoxJm8cAc',authDomain:'mari-bersama.firebaseapp.com',projectId:'mari-bersama',storageBucket:'mari-bersama.firebasestorage.app',messagingSenderId:'809916770964',appId:'1:809916770964:web:922ab4cc83f6e339bd6281'};
+const SDK='https://www.gstatic.com/firebasejs/10.14.1/',ID_DOMAIN='@mari-bersama.app';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+function h(tag,props,...kids){const e=document.createElement(tag);
+  if(props)for(const k in props){if(k==='class')e.className=props[k];else if(k.startsWith('on'))e[k]=props[k];else e.setAttribute(k,props[k])}
+  kids.flat().forEach(c=>{if(c==null||c===false)return;e.append(c.nodeType?c:document.createTextNode(String(c)))});return e}
+let tt;const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(()=>t.style.display='none',3200)};
+const msOf=t=>!t?0:t.toMillis?t.toMillis():(t.seconds?t.seconds*1000:(typeof t==='number'?t:0));
+const when=t=>{const m=msOf(t);return m?new Date(m).toLocaleString('ms-MY',{dateStyle:'medium',timeStyle:'short'}):'-'};
+const fmt=n=>Number(n||0).toLocaleString('en-US');
+const errTxt=e=>e&&e.code==='permission-denied'?'Ditolak oleh peraturan. Pastikan firestore.rules terkini sudah diterbitkan dan UID anda ada dalam koleksi admins.':((e&&e.message)||'Ralat');
+async function act(fn){try{await fn()}catch(e){console.error(e);toast(errTxt(e))}}
+
+let F,me=null,nameCache={};
+const sv=()=>F.serverTimestamp();
+
+async function boot(){
+  const [a,b,c]=await Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-auth.js'),import(SDK+'firebase-firestore.js')]);
+  F={...a,...b,...c};F.app=F.initializeApp(CFG);F.auth=F.getAuth(F.app);F.db=F.getFirestore(F.app);
+  F.onAuthStateChanged(F.auth,u=>gate(u));
+}
+async function gate(u){
+  ['#v-login','#v-deny','#v-app'].forEach(s=>$(s).hidden=true);
+  if(!u||u.isAnonymous){if(u&&u.isAnonymous)await F.signOut(F.auth);$('#v-login').hidden=false;return}
+  let ok=false;
+  try{ok=(await F.getDoc(F.doc(F.db,'admins',u.uid))).exists()}catch(e){console.error(e)}
+  if(!ok){$('#deny-uid').textContent=u.uid;$('#v-deny').hidden=false;return}
+  me=u;$('#who').textContent=u.displayName||(u.email||'').split('@')[0]||'admin';
+  $('#v-app').hidden=false;show('home');countReports();
+}
+$('#b-google').onclick=()=>act(async()=>{await F.signInWithPopup(F.auth,new F.GoogleAuthProvider())});
+$('#b-login').onclick=()=>act(async()=>{const id=$('#l-id').value.trim().toLowerCase(),pw=$('#l-pw').value;if(!id||!pw)return toast('Isi ID dan kata laluan');
+  try{await F.signInWithEmailAndPassword(F.auth,id+ID_DOMAIN,pw)}catch(e){toast('ID atau kata laluan salah')}});
+const out=()=>F.signOut(F.auth);$('#b-out').onclick=out;$('#b-out1').onclick=out;
+$('#b-refresh').onclick=()=>show(cur);
+
+let cur='home';
+$$('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+function show(t){cur=t;$$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  ['home','players','reports','ann','bans'].forEach(k=>$('#t-'+k).hidden=k!==t);
+  ({home:vHome,players:vPlayers,reports:vReports,ann:vAnn,bans:vBans})[t]()}
+
+async function nameOf(uid){
+  if(!uid)return'-';if(nameCache[uid])return nameCache[uid];
+  try{const s=await F.getDoc(F.doc(F.db,'users',uid));const d=s.exists()?s.data():null;
+    nameCache[uid]=d?(d.uname?'@'+d.uname+' · ':'')+d.name:'(tiada profil) '+uid.slice(0,6)}catch{nameCache[uid]=uid.slice(0,6)}
+  return nameCache[uid]}
+
+/* ===== Ringkasan ===== */
+async function vHome(){
+  const box=$('#t-home');box.replaceChildren(h('p',{class:'mut'},'Memuatkan...'));
+  const cnt=async q=>{try{return(await F.getCountFromServer(q)).data().count}catch(e){console.error(e);return'?'}};
+  const [users,reps,ann,bans]=await Promise.all([cnt(F.collection(F.db,'users')),cnt(F.collection(F.db,'reports')),cnt(F.collection(F.db,'announcements')),cnt(F.collection(F.db,'bans'))]);
+  let top=[];try{top=(await F.getDocs(F.query(F.collection(F.db,'users'),F.orderBy('points','desc'),F.limit(5)))).docs}catch(e){console.error(e)}
+  box.replaceChildren(
+    h('div',{class:'grid'},stat('Pemain',users),stat('Laporan & aduan',reps),stat('Siaran',ann),stat('Disekat',bans)),
+    h('div',{class:'card',style:'margin-top:12px'},h('h3',null,'5 pemain teratas'),
+      top.length?top.map((d,i)=>{const v=d.data();return h('div',{class:'li',onclick:()=>{show('players');openPlayer(d.id)}},h('b',null,(i+1)+'.'),h('div',{class:'g'},h('b',null,v.name),h('div',{class:'mut'},(v.uname?'@'+v.uname:'tiada @ID')+' · '+v.kind)),h('span',null,fmt(v.points)+' PTS'))}):h('p',{class:'mut'},'Tiada data')));
+}
+const stat=(l,n)=>h('div',{class:'stat'},h('b',null,fmt(n)),h('span',null,l));
+async function countReports(){try{const s=await F.getDocs(F.query(F.collection(F.db,'reports'),F.orderBy('at','desc'),F.limit(200)));
+  const n=s.docs.filter(d=>!d.data().status).length;$('#n-rep').hidden=!n;$('#n-rep').textContent=n}catch{}}
+
+/* ===== Pemain ===== */
+async function vPlayers(){
+  const box=$('#t-players');
+  const q=h('input',{placeholder:'Cari nama, @ID, atau tampal UID',id:'pq'});
+  const list=h('div',{class:'card'}),det=h('div');
+  box.replaceChildren(h('div',{class:'card'},h('div',{class:'row'},h('div',{style:'flex:1;min-width:200px'},q),h('button',{class:'pri',onclick:()=>search()},'Cari'))),det,list);
+  det.id='pdet';
+  async function search(){
+    list.replaceChildren(h('p',{class:'mut'},'Mencari...'));
+    const term=q.value.trim().toLowerCase().replace(/^@/,'');let docs=[];
+    try{
+      if(term.length>=20){const s=await F.getDoc(F.doc(F.db,'users',q.value.trim()));if(s.exists())docs=[s]}
+      else{
+        if(/^[a-z0-9_]{3,16}$/.test(term)){try{const u=await F.getDoc(F.doc(F.db,'usernames',term));if(u.exists()){const s=await F.getDoc(F.doc(F.db,'users',u.data().uid));if(s.exists())docs.push(s)}}catch{}}
+        const all=(await F.getDocs(F.query(F.collection(F.db,'users'),F.orderBy('points','desc'),F.limit(300)))).docs;
+        const f=term?all.filter(d=>{const v=d.data();return[v.name,v.uname,v.handle].some(x=>(x||'').toLowerCase().includes(term))}):all.slice(0,50);
+        f.forEach(d=>{if(!docs.some(x=>x.id===d.id))docs.push(d)});
+      }
+    }catch(e){console.error(e);toast(errTxt(e))}
+    list.replaceChildren(h('h3',null,'Keputusan ('+docs.length+')'),...(docs.length?docs.slice(0,60).map(d=>{const v=d.data();
+      return h('div',{class:'li',onclick:()=>openPlayer(d.id)},h('div',{class:'g'},h('b',null,v.name),h('div',{class:'mut'},(v.uname?'@'+v.uname:'tiada @ID')+' · '+v.kind+' · '+fmt(v.points)+' PTS')))}):[h('p',{class:'mut'},'Tiada padanan. Carian nama hanya meliputi 300 pemain teratas; guna @ID penuh atau UID untuk pemain lain.')]));
+  }
+  q.onkeydown=e=>{if(e.key==='Enter')search()};
+  search();
+}
+async function openPlayer(uid){
+  if(cur!=='players')show('players');
+  const det=await waitEl('#pdet');det.replaceChildren(h('div',{class:'card'},'Memuatkan...'));
+  const s=await F.getDoc(F.doc(F.db,'users',uid)),v=s.exists()?s.data():null;
+  if(!v){det.replaceChildren(h('div',{class:'card'},'Pemain tidak dijumpai'));return}
+  let ban=null;try{const b=await F.getDoc(F.doc(F.db,'bans',uid));if(b.exists())ban=b.data()}catch{}
+  const fields=[['points','PTS'],['played','Main'],['coins','Syiling'],['streak','Streak'],['bestStreak','Streak terbaik'],['vw','1v1 Menang'],['vl','1v1 Kalah'],['vd','1v1 Seri']];
+  const inp={};fields.forEach(([k])=>{inp[k]=h('input',{type:'number',min:'0',value:v[k]||0})});
+  const nm=h('input',{value:v.name,maxlength:'20'}),bio=h('input',{value:v.bio||'',maxlength:'120'});
+  const ntitle=h('input',{placeholder:'Tajuk notis',maxlength:'80'}),nbody=h('textarea',{rows:'3',placeholder:'Mesej kepada pemain ini',maxlength:'600'});
+  const reason=h('input',{placeholder:'Sebab sekatan',maxlength:'200'});
+  const seg=v.seg||{};
+  det.replaceChildren(h('div',{class:'card'},
+    h('div',{class:'row'},h('h3',{style:'margin:0;flex:1'},v.name),ban?h('span',{class:'tag bad'},'DISEKAT'):h('span',{class:'tag ok'},'Aktif')),
+    h('div',{class:'mut'},(v.uname?'@'+v.uname:'tiada @ID')+' · '+v.kind+(v.handle?' · ID log masuk: '+v.handle:'')+' · daftar '+when(v.createdAt)),
+    h('span',{class:'uid'},uid),
+    ban?h('div',{class:'msg'},'Sebab sekatan: '+(ban.reason||'-')):null,
+    h('h3',{style:'margin-top:14px'},'Statistik'),
+    h('div',{class:'two'},fields.map(([k,l])=>h('div',null,h('label',null,l),inp[k]))),
+    h('p',{class:'mut'},'PTS ikut subjek: '+(Object.keys(seg).filter(k=>seg[k]).map(k=>k+' '+seg[k]).join(', ')||'-')),
+    h('div',{class:'row'},h('button',{class:'pri',onclick:()=>act(async()=>{
+      const up={};fields.forEach(([k])=>{const n=Math.max(0,Math.floor(Number(inp[k].value)||0));if(n!==(v[k]||0))up[k]=n});
+      if(!Object.keys(up).length)return toast('Tiada perubahan');
+      if(!confirm('Ubah statistik: '+Object.entries(up).map(([k,n])=>k+' '+(v[k]||0)+' → '+n).join(', ')+'?'))return;
+      up.updatedAt=sv();await F.updateDoc(F.doc(F.db,'users',uid),up);toast('Statistik dikemas kini');openPlayer(uid)})},'Simpan statistik'))),
+    h('div',{class:'card'},h('h3',null,'Profil & ID'),
+      h('label',null,'Nama paparan'),nm,h('label',null,'Bio'),bio,
+      h('div',{class:'row',style:'margin-top:10px'},
+        h('button',{onclick:()=>act(async()=>{const n=nm.value.trim();if(n.length<2)return toast('Nama terlalu pendek');await F.updateDoc(F.doc(F.db,'users',uid),{name:n,bio:bio.value.trim().slice(0,120),updatedAt:sv()});delete nameCache[uid];toast('Profil dikemas kini');openPlayer(uid)})},'Simpan nama & bio'),
+        h('button',{onclick:()=>act(async()=>{if(!v.uname)return toast('Pemain belum ada @ID');
+          if(!confirm('Reset @'+v.uname+'? Pemain boleh pilih @ID baharu serta-merta dan nama lama dibebaskan.'))return;
+          await F.updateDoc(F.doc(F.db,'users',uid),{uname:'',unameAt:F.deleteField(),updatedAt:sv()});
+          try{await F.deleteDoc(F.doc(F.db,'usernames',v.uname))}catch(e){console.error(e)}
+          delete nameCache[uid];toast('@ID direset');openPlayer(uid)})},'Reset @ID'))),
+    h('div',{class:'card'},h('h3',null,'Hantar notis peribadi'),ntitle,h('div',{style:'height:6px'}),nbody,
+      h('button',{class:'pri',style:'margin-top:8px',onclick:()=>act(async()=>{if(!ntitle.value.trim()||!nbody.value.trim())return toast('Isi tajuk dan mesej');
+        await F.addDoc(F.collection(F.db,'users',uid,'notices'),{title:ntitle.value.trim(),body:nbody.value.trim(),at:sv()});ntitle.value=nbody.value='';toast('Notis dihantar ke Inbox pemain')})},'Hantar')),
+    h('div',{class:'card'},h('h3',null,ban?'Buka sekatan':'Sekat pemain'),
+      ban?h('button',{class:'ok',onclick:()=>act(async()=>{await F.deleteDoc(F.doc(F.db,'bans',uid));toast('Sekatan dibuka');openPlayer(uid)})},'Buka sekatan')
+         :[reason,h('button',{class:'bad',style:'margin-top:8px',onclick:()=>act(async()=>{if(!confirm('Sekat '+v.name+'? Pemain tidak boleh log masuk atau menyimpan data.'))return;
+            await F.setDoc(F.doc(F.db,'bans',uid),{reason:reason.value.trim(),name:String(v.name).slice(0,30),at:sv()});toast('Pemain disekat');openPlayer(uid)})},'Sekat')],
+      h('p',{class:'mut'},'Sekatan menghalang log masuk di app dan menolak simpanan/siaran/mesej di pelayan. Akaun Firebase tidak dipadam.')));
+  det.scrollIntoView({behavior:'smooth'});
+}
+const waitEl=async s=>{for(let i=0;i<40;i++){const e=$(s);if(e)return e;await new Promise(r=>setTimeout(r,50))}throw new Error('UI')};
+
+/* ===== Laporan & Aduan ===== */
+let repFilter='all';
+async function vReports(){
+  const box=$('#t-reports');box.replaceChildren(h('p',{class:'mut'},'Memuatkan...'));
+  let docs=[];try{docs=(await F.getDocs(F.query(F.collection(F.db,'reports'),F.orderBy('at','desc'),F.limit(150)))).docs}catch(e){console.error(e);toast(errTxt(e))}
+  const typeOf=d=>d.type==='aduan'?'aduan':'laporan';
+  const flt=docs.filter(d=>{const v=d.data();return repFilter==='all'||(repFilter==='baru'?!v.status:typeOf(v)===repFilter)});
+  const bar=h('div',{class:'row',style:'margin-bottom:12px'},[['all','Semua'],['baru','Belum selesai'],['aduan','Aduan'],['laporan','Laporan']].map(([k,l])=>h('button',{class:repFilter===k?'sm pri':'sm',onclick:()=>{repFilter=k;vReports()}},l)));
+  box.replaceChildren(bar,...(flt.length?flt.map(d=>repCard(d)):[h('p',{class:'mut'},'Tiada rekod.')]));
+  countReports();
+}
+function repCard(d){
+  const v=d.data(),by=h('b',null,'...'),isU=v.type==='user'&&v.ref;
+  nameOf(v.by).then(n=>by.textContent=n);
+  const rep=h('textarea',{rows:'2',placeholder:'Balasan kepada pelapor (masuk ke Inbox mereka)',maxlength:'600'});
+  return h('div',{class:'card'},
+    h('div',{class:'row'},h('span',{class:'tag '+(v.status?'ok':'new')},v.status?'Selesai':'Baharu'),h('span',{class:'tag'},v.type==='aduan'?'Aduan':v.type==='post'?'Laporan siaran':v.type==='user'?'Laporan pemain':'Laporan'),h('span',{class:'mut'},when(v.at))),
+    h('div',{style:'margin-top:6px'},'Dilaporkan: ',h('b',null,v.who||'-'),' · Sebab: ',h('b',null,v.why||'-')),
+    v.msg?h('div',{class:'msg'},v.msg):null,
+    h('div',{class:'mut'},'Pelapor: ',by,' ',h('a',{href:'#',style:'color:var(--pri)',onclick:e=>{e.preventDefault();openPlayer(v.by)}},'(buka)')),
+    rep,
+    h('div',{class:'row',style:'margin-top:8px'},
+      h('button',{class:'sm pri',onclick:()=>act(async()=>{const t=rep.value.trim();if(!t)return toast('Tulis balasan dahulu');
+        await F.addDoc(F.collection(F.db,'users',v.by,'notices'),{title:'Balasan admin: '+String(v.why||'Aduan').slice(0,50),body:t,at:sv()});
+        await F.updateDoc(F.doc(F.db,'reports',d.id),{status:'selesai',reply:t.slice(0,600)});toast('Balasan dihantar');vReports()})},'Hantar balasan'),
+      isU?h('button',{class:'sm',onclick:()=>openPlayer(v.ref)},'Buka pemain dilapor'):null,
+      v.status?null:h('button',{class:'sm ok',onclick:()=>act(async()=>{await F.updateDoc(F.doc(F.db,'reports',d.id),{status:'selesai'});vReports()})},'Tanda selesai'),
+      h('button',{class:'sm bad',onclick:()=>act(async()=>{if(!confirm('Padam laporan ini?'))return;await F.deleteDoc(F.doc(F.db,'reports',d.id));vReports()})},'Padam')));
+}
+
+/* ===== Siaran ===== */
+async function vAnn(){
+  const box=$('#t-ann');
+  const kind=h('select',null,h('option',{value:'update'},'Kemas kini / versi baharu'),h('option',{value:'info'},'Makluman'),h('option',{value:'warn'},'Penting'));
+  const ver=h('input',{placeholder:'cth: 1.2',maxlength:'20'}),title=h('input',{placeholder:'Tajuk',maxlength:'80'}),body=h('textarea',{rows:'4',placeholder:'Isi siaran (apa yang baharu, apa yang dibaiki)',maxlength:'800'});
+  const list=h('div',{class:'card'},h('p',{class:'mut'},'Memuatkan...'));
+  box.replaceChildren(h('div',{class:'card'},h('h3',null,'Siaran baharu ke Inbox semua pemain'),
+    h('label',null,'Jenis'),kind,h('label',null,'Versi (pilihan)'),ver,h('label',null,'Tajuk'),title,h('label',null,'Isi'),body,
+    h('button',{class:'pri',style:'margin-top:10px',onclick:()=>act(async()=>{const t=title.value.trim();if(!t)return toast('Isi tajuk');
+      if(!confirm('Hantar siaran ini kepada SEMUA pemain?'))return;
+      const d={title:t,body:body.value.trim(),kind:kind.value,at:sv()};if(ver.value.trim())d.ver=ver.value.trim();
+      await F.addDoc(F.collection(F.db,'announcements'),d);title.value=body.value=ver.value='';toast('Siaran dihantar. Pemain nampak di Inbox mereka.');vAnn()})},'Hantar kepada semua'),
+    h('p',{class:'mut'},'Pemain menerima siaran secara langsung (lencana merah di Inbox). Kami tidak menghantar notifikasi telefon.')),list);
+  try{const docs=(await F.getDocs(F.query(F.collection(F.db,'announcements'),F.orderBy('at','desc'),F.limit(30)))).docs;
+    list.replaceChildren(h('h3',null,'Siaran lepas ('+docs.length+')'),docs.length?docs.map(d=>{const v=d.data();
+      return h('div',{class:'li',style:'cursor:default'},h('div',{class:'g'},h('b',null,v.title),h('div',{class:'mut'},(v.kind==='update'?'Kemas kini':v.kind==='warn'?'Penting':'Makluman')+(v.ver?' v'+v.ver:'')+' · '+when(v.at))),
+        h('button',{class:'sm bad',onclick:()=>act(async()=>{if(!confirm('Padam siaran ini?'))return;await F.deleteDoc(F.doc(F.db,'announcements',d.id));vAnn()})},'Padam'))}):h('p',{class:'mut'},'Belum ada siaran.'))}
+  catch(e){console.error(e);list.replaceChildren(h('p',{class:'mut'},errTxt(e)))}
+}
+
+/* ===== Sekatan ===== */
+async function vBans(){
+  const box=$('#t-bans');box.replaceChildren(h('p',{class:'mut'},'Memuatkan...'));
+  let docs=[];try{docs=(await F.getDocs(F.query(F.collection(F.db,'bans'),F.limit(100)))).docs}catch(e){console.error(e);toast(errTxt(e))}
+  box.replaceChildren(h('div',{class:'card'},h('h3',null,'Pemain disekat ('+docs.length+')'),docs.length?docs.map(d=>{const v=d.data();
+    return h('div',{class:'li',onclick:()=>openPlayer(d.id)},h('div',{class:'g'},h('b',null,v.name||d.id),h('div',{class:'mut'},(v.reason||'tiada sebab')+' · '+when(v.at))),
+      h('button',{class:'sm ok',onclick:e=>{e.stopPropagation();act(async()=>{await F.deleteDoc(F.doc(F.db,'bans',d.id));vBans()})}},'Buka'))}):h('p',{class:'mut'},'Tiada pemain disekat.')));
+}
+
+boot().catch(e=>{console.error(e);document.body.prepend(h('p',{style:'padding:20px'},'Gagal memuatkan Firebase: '+e.message))});
+</script>
+</body>
+</html>
