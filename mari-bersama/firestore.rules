@@ -186,11 +186,10 @@ service cloud.firestore {
     match /usernames/{name} {
       allow get: if signedIn();
       allow list: if false;
-      allow create: if signedIn()
-        && name.matches('^[a-z0-9_]{3,16}$')
-        && request.resource.data.keys().hasOnly(['uid'])
-        && request.resource.data.uid == request.auth.uid
-        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('uname', '') == name;
+    189  allow create: if signedIn()
+190    && name.matches("^[a-z0-9_]{3,16}$")
+191    && request.resource.data.keys().hasOnly(['uid'])
+192    && request.resource.data.uid == request.auth.uid;
       allow update: if false;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
