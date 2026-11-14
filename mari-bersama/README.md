@@ -120,6 +120,18 @@ Nota: cabaran hanya antara **rakan**. Cabaran tamat selepas 24 jam, perlawanan y
 
 **Had (jujur):** markah dikira di pelayar dan jawapan betul disimpan dalam dokumen perlawanan, jadi pemain yang tahu teknik boleh menipu. Sesuai untuk permainan antara rakan, tetapi Ranking Menang 1v1 belum boleh dipercayai sepenuhnya sehingga ada Cloud Functions (pelan Blaze).
 
+## 13. Kemas kini v9: Home suapan & skrin muat baharu (tiada perubahan peraturan)
+- **Home** kini suapan gaya Facebook: kotak "Apa yang anda fikirkan?", pintasan (Game, Versus 1v1, Ruang Rakan, Ranking, Ganjaran), ringkasan PTS/syiling/streak, dan siaran anda serta rakan. Tab **Post** kekal untuk menulis siaran.
+- **Skrin muat** guna poster Mari Bersama (fail `splash.webp` dalam folder `public`, wajib ikut sekali semasa deploy).
+1. `firestore.rules` tidak berubah. 
+2. Deploy folder `public` penuh (ada fail baharu `splash.webp`). Pastikan `/sw.js` ada `mb-v9`, kemudian Ctrl+Shift+R.
+3. Untuk tukar nombor "Version 1.1" pada poster, gantikan `splash.webp` dengan gambar baharu (nama sama).
+
+## 14. Pembetulan v10: pendaftaran & simpanan gagal ("Gagal simpan ke pelayan")
+Punca: versi v8/v9 menulis medan rekod 1v1 pada pendaftaran dan setiap simpanan, tetapi peraturan Firestore lama menolaknya. Kini medan itu hanya ditulis bila pemain benar-benar bermain Versus 1v1, jadi app berfungsi dengan peraturan lama atau baharu. Mesej ralat juga memaparkan kod sebenar (cth `permission-denied`).
+- **Tetap terbitkan `firestore.rules` terkini** (Firestore → Rules → padam semua → tampal → Publish). Tanpanya Versus 1v1 tidak akan berfungsi.
+- Deploy folder `public`, pastikan `/sw.js` ada `mb-v10`, kemudian Ctrl+Shift+R.
+
 ## Had semasa (jujur)
 - **Anti-cheat belum penuh.** Peraturan menghadkan mata maksimum 600 setiap simpanan dan mata tidak boleh turun, tetapi pemain yang tahu teknik boleh menokok mata. Perlindungan sebenar memerlukan Cloud Functions (pelan Blaze). Sesuai untuk fasa ujian.
 - **Tiada tetapan semula kata laluan** untuk akaun ID (kerana e-mel palsu). Penguji yang lupa kata laluan perlu daftar ID baru, atau guna Google.
@@ -128,3 +140,9 @@ Nota: cabaran hanya antara **rakan**. Cabaran tamat selepas 24 jam, perlawanan y
 - Mod offline: app boleh dibuka dan Hangman, Maths dan Bendera boleh dimain, tetapi log masuk, ranking dan report perlukan internet. Jika app dibuka tanpa internet, ia jatuh ke mod demo tempatan selepas ~10 saat, jadi PTS yang dimain ketika itu **tidak masuk akaun online atau ranking**. Penyegerakan skor offline belum ada (boleh ditambah kemudian).
 - Avatar berlapis, kedai dan Versus 2v2 belum ada. Ia memerlukan bilik masa nyata (kemas kini seterusnya).
 - Kos: pelan percuma memadai untuk ratusan penguji (Firestore: 50,000 bacaan/hari).
+
+## 15. Pembaikan statistik Versus hilang (v11)
+- Punca: simpanan gagal sekali menyebabkan simpanan seterusnya ditolak (kenaikan `played` >1), tetapi perlawanan sudah ditanda `paid`. Hasilnya senarai "Keputusan terkini" ada tetapi Menang/Kalah/Seri jadi 0.
+- Baiki: simpanan kini berperingkat (mengejar jumlah sebenar langkah demi langkah); perlawanan ditanda `paid` hanya selepas simpanan berjaya; kiraan Menang/Kalah/Seri dipulihkan automatik daripada perlawanan yang sudah selesai bila buka skrin Versus.
+- PTS/syiling yang sudah hilang sebelum ini tidak dapat dipulihkan.
+- Langkah: 1) Publish `firestore.rules` dahulu, 2) deploy folder `public`, 3) semak `/sw.js` ada `mb-v11`, 4) hard refresh.

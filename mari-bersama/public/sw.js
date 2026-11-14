@@ -1,7 +1,7 @@
 /* Service worker Mari Bersama: boleh dibuka tanpa internet selepas dimuat sekali.
    Tukar nombor VERSI jika mahu paksa cache lama dibersihkan. */
-const VERSI = 'mb-v8';
-const SHELL = ['./', 'index.html', 'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'];
+const VERSI = 'mb-v11';
+const SHELL = ['./', 'index.html', 'manifest.json', 'splash.webp', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSI).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

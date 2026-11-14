@@ -6,6 +6,7 @@
 <title>Mari Bersama</title>
 <meta name="theme-color" content="#0a1126">
 <link rel="manifest" href="manifest.json">
+<link rel="preload" as="image" href="splash.webp">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -412,6 +413,27 @@ button.sm.pri{background:linear-gradient(180deg,#efc562,#dfa538);color:#171204;b
 .vs-gain{font-weight:600;color:var(--yellow)}
 .vs-chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
 #s-vs .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+
+/* ===== v9: skrin muat baharu & Home suapan ===== */
+#loader{background:#b5d8fb;padding:0;gap:0}
+#loader #splash{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:0;box-shadow:none;animation:splashIn .8s ease-out both}
+@keyframes splashIn{from{opacity:0;transform:scale(.97)}}
+#loader .load-wrap{position:absolute;left:0;right:0;bottom:calc(5% + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:8px}
+#loader .load-bar{width:min(58vw,260px);height:6px;background:rgba(19,40,107,.18);border:0;border-radius:6px}
+#loader .load-bar i{background:linear-gradient(90deg,#1d3a8c,#ffb300)}
+#loader .load-txt{color:#13286b;font-size:.82rem;font-weight:600;letter-spacing:.04em}
+.home-top .comp{display:flex;gap:10px;align-items:flex-start}
+.home-top textarea{resize:none;border-radius:14px;min-height:56px}
+.comp-act{display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px}
+.qrow{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none;margin-bottom:2px}.qrow::-webkit-scrollbar{display:none}
+.qchip{flex:none;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);box-shadow:none;font-size:.88rem;font-weight:500}
+.qchip svg{width:17px;height:17px}
+.strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.pill{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:.82rem;color:var(--mut)}
+.pill b{color:var(--txt);font-weight:600}.pill svg{width:15px;height:15px}
+.strip .pri{margin-left:auto}
+.feed-empty{text-align:center;padding:26px 16px}
+.feed-empty .row{margin-top:12px;justify-content:center}
 </style>
 </head>
 <body>
@@ -423,9 +445,8 @@ button.sm.pri{background:linear-gradient(180deg,#efc562,#dfa538);color:#171204;b
 </div>
 
 <div id="loader">
-  <img data-logo alt="Mari Bersama">
-  <div class="load-bar"><i></i></div>
-  <div class="load-txt">Memuatkan...</div>
+  <img id="splash" src="splash.webp" alt="Mari Bersama">
+  <div class="load-wrap"><div class="load-bar"><i></i></div><div class="load-txt">Memuatkan...</div></div>
 </div>
 
 <header id="top" hidden>
@@ -477,22 +498,19 @@ button.sm.pri{background:linear-gradient(180deg,#efc562,#dfa538);color:#171204;b
 
 <!-- HOME -->
 <section class="screen" id="s-home">
-  <div class="card hello"><div class="av" id="h-av"></div><div><b id="h-name"></b><div class="mut" id="h-sub">Jom bermain dan kumpul PTS!</div></div></div>
-  <div class="stats4">
-    <div class="st"><b id="hs-pts">0</b><span>PTS</span></div>
-    <div class="st"><b id="hs-coin">0</b><span>Syiling</span></div>
-    <div class="st"><b id="hs-streak">0</b><span>Streak</span></div>
-    <div class="st"><b id="hs-rank">-</b><span>Ranking</span></div>
+  <div class="card home-top">
+    <div class="comp"><div class="av" id="h-av"></div><textarea id="hm-text" rows="2" maxlength="300" placeholder="Apa yang anda fikirkan?"></textarea></div>
+    <div class="comp-act"><span class="mut" id="hm-hint">Dikongsi dengan rakan anda</span><button class="pri sm" id="hm-send">Hantar</button></div>
   </div>
-  <div class="card" id="home-daily"></div>
-  <div class="sec">Terus ke</div>
-  <div class="grid">
-    <button class="tile c-yellow" data-go="menu"><span class="tic" data-ic="gamepad"></span><span class="tl">Main Game<small>Hangman, kuiz &amp; trivia</small></span></button>
-    <button class="tile c-sky" data-go="rakan"><span class="tic" data-ic="users"></span><span class="tl">Ruang Rakan<small>Rakan &amp; permintaan</small></span></button>
-    <button class="tile c-purple" data-go="ranking"><span class="tic" data-ic="trophy"></span><span class="tl">Ranking<small>Online &amp; rakan</small></span></button>
-    <button class="tile c-green" data-go="rewards"><span class="tic" data-ic="gift"></span><span class="tl">Ganjaran<small>Badge &amp; streak</small></span></button>
+  <div class="qrow">
+    <button class="qchip" data-go="menu"><span data-ic="gamepad"></span>Main Game</button>
+    <button class="qchip" data-go="versus"><span data-ic="swords"></span>Versus 1v1</button>
+    <button class="qchip" data-go="rakan"><span data-ic="users"></span>Ruang Rakan</button>
+    <button class="qchip" data-go="ranking"><span data-ic="trophy"></span>Ranking</button>
+    <button class="qchip" data-go="rewards"><span data-ic="gift"></span>Ganjaran</button>
   </div>
-    <div class="card"><h3>Berita Rakan</h3><div id="home-feed"></div></div>
+  <div class="strip" id="home-strip"></div>
+  <div id="home-feed"></div>
 </section>
 
 <!-- MENU / KUIZ -->
@@ -1159,7 +1177,7 @@ const Online={
   },
   shape(uid,d){
     return{uid,id:d.handle||(d.kind==='google'?'Akaun Google':'Tetamu'),handle:d.handle||'',kind:d.kind,guest:d.kind==='guest',
-      name:d.name,avatar:d.avatar,bio:d.bio||'',points:d.points||0,played:d.played||0,_bp:d.points||0,_bg:d.played||0,seg:segOf(d),_bseg:segOf(d),
+      name:d.name,avatar:d.avatar,bio:d.bio||'',points:d.points||0,played:d.played||0,_bp:d.points||0,_bg:d.played||0,_bst:d.streak||0,_bbst:d.bestStreak||0,seg:segOf(d),_bseg:segOf(d),
       coins:d.coins||0,_bc:d.coins||0,streak:d.streak||0,bestStreak:d.bestStreak||0,lastDay:d.lastDay||'',lastClaim:d.lastClaim||'',ach:{...(d.ach||{})},_bach:{...(d.ach||{})},title:d.title||'',vw:d.vw||0,vl:d.vl||0,vd:d.vd||0,_bvw:d.vw||0,_bvl:d.vl||0,_bvd:d.vd||0,uname:d.uname||'',unameAt:d.unameAt&&d.unameAt.toMillis?d.unameAt.toMillis():0};
   },
   async profile(u){
@@ -1170,7 +1188,7 @@ const Online={
       const handle=kind==='id'?(u.email||'').split('@')[0]:'';
       let name=kind==='guest'?'Tetamu'+rnd(1000,9999):kind==='google'?(u.displayName||'Pemain'):handle;
       name=(name||'Pemain').trim().slice(0,20);if(name.length<2)name='Pemain';
-      await F.setDoc(ref,{name,bio:'',avatar:pickEmoji(),points:0,played:0,seg:emptySeg(),coins:0,vw:0,vl:0,vd:0,streak:0,bestStreak:0,lastDay:'',lastClaim:'',ach:{},title:'',kind,handle,createdAt:F.serverTimestamp()});
+      await F.setDoc(ref,{name,bio:'',avatar:pickEmoji(),points:0,played:0,seg:emptySeg(),coins:0,streak:0,bestStreak:0,lastDay:'',lastClaim:'',ach:{},title:'',kind,handle,createdAt:F.serverTimestamp()});
       snap=await F.getDoc(ref);
     }
     return Online.shape(u.uid,snap.data());
@@ -1189,15 +1207,29 @@ const Online={
   },
   async logout(){await F.signOut(F.auth)},
   async save(u){
-    const dp=(u.points||0)-(u._bp||0),dg=(u.played||0)-(u._bg||0),dc=(u.coins||0)-(u._bc||0);
-    const seg=segOf(u),bs=u._bseg||emptySeg();
-    const upd={name:u.name,bio:u.bio||'',avatar:u.avatar,points:F.increment(dp),played:F.increment(dg),coins:F.increment(dc),vw:F.increment((u.vw||0)-(u._bvw||0)),vl:F.increment((u.vl||0)-(u._bvl||0)),vd:F.increment((u.vd||0)-(u._bvd||0)),
-      streak:u.streak||0,bestStreak:u.bestStreak||0,lastDay:u.lastDay||'',lastClaim:u.lastClaim||'',title:u.title||'',updatedAt:F.serverTimestamp()};
-    SUBJ.forEach(x=>{upd['seg.'+x[0]]=F.increment((seg[x[0]]||0)-(bs[x[0]]||0))});
-    const ach=u.ach||{},bach=u._bach||{};
-    Object.keys(ach).forEach(id=>{if(!bach[id])upd['ach.'+id]=1});
-    await F.updateDoc(F.doc(F.db,'users',u.uid),upd);
-    u._bp=u.points||0;u._bg=u.played||0;u._bseg={...seg};u._bc=u.coins||0;u._bach={...ach};u._bvw=u.vw||0;u._bvl=u.vl||0;u._bvd=u.vd||0;
+    // Simpanan berperingkat: peraturan hanya benarkan points +600, played +1, coins +3000, streak +1, 1v1 +1 setiap tulis.
+    // Jika simpanan terdahulu gagal, baki beza dihantar dalam beberapa langkah sehingga selari (tiada lagi tersekat selama-lamanya).
+    const ref=F.doc(F.db,'users',u.uid),cl=(r,mx)=>Math.max(0,Math.min(r,mx));
+    for(let n=0;n<80;n++){
+      const rp=(u.points||0)-(u._bp||0),rg=(u.played||0)-(u._bg||0),rc=(u.coins||0)-(u._bc||0);
+      const rv={};['vw','vl','vd'].forEach(k=>{rv[k]=(u[k]||0)-(u['_b'+k]||0)});
+      const st=u.streak||0,bst=u.bestStreak||0,bs0=u._bst||0,bb0=u._bbst||0;
+      const stepSt=st>bs0?Math.min(st,bs0+1):st,stepBst=bst>bb0?Math.min(bst,bb0+1):bst;
+      const sp=cl(rp,600),sg=cl(rg,1),sc=cl(rc,3000);
+      const seg=segOf(u),bs=u._bseg||emptySeg();
+      const upd={name:u.name,bio:u.bio||'',avatar:u.avatar,points:F.increment(sp),played:F.increment(sg),coins:F.increment(sc),
+        streak:stepSt,bestStreak:stepBst,lastDay:u.lastDay||'',lastClaim:u.lastClaim||'',title:u.title||'',updatedAt:F.serverTimestamp()};
+      const sv={};['vw','vl','vd'].forEach(k=>{const d=cl(rv[k],1);if(d){upd[k]=F.increment(d);sv[k]=d}});   // rekod 1v1 hanya ditulis bila berubah
+      SUBJ.forEach(x=>{upd['seg.'+x[0]]=F.increment((seg[x[0]]||0)-(bs[x[0]]||0))});
+      const ach=u.ach||{},bach=u._bach||{};
+      Object.keys(ach).forEach(id=>{if(!bach[id])upd['ach.'+id]=1});
+      await F.updateDoc(ref,upd);
+      u._bp=(u._bp||0)+sp;u._bg=(u._bg||0)+sg;u._bc=(u._bc||0)+sc;
+      Object.keys(sv).forEach(k=>{u['_b'+k]=(u['_b'+k]||0)+sv[k]});
+      u._bseg={...seg};u._bach={...ach};u._bst=stepSt;u._bbst=stepBst;
+      const more=rp>sp||rg>sg||rc>sc||['vw','vl','vd'].some(k=>rv[k]>1)||stepSt!==st||stepBst!==bst;
+      if(!more)break;
+    }
   },
   async myRank(){
     const c=await F.getCountFromServer(F.query(F.collection(F.db,'users'),F.where('points','>',cur.points||0)));
@@ -1221,7 +1253,7 @@ const Online={
 DB=Local;
 const getUser=()=>cur;
 let saveQ=Promise.resolve();
-function saveUser(u){cur=u;saveQ=saveQ.then(()=>DB.save(u)).catch(e=>{console.error(e);toast('Gagal simpan ke pelayan')})}
+function saveUser(u){cur=u;const p=saveQ.then(()=>DB.save(u)).then(()=>{if(typeof vsFlushPaid==='function')vsFlushPaid();return true}).catch(e=>{console.error(e);toast('Gagal simpan ke pelayan'+(e&&e.code?' ('+e.code+')':'')+(e&&e.code==='permission-denied'?'. Terbitkan firestore.rules terkini di Firebase':''));return false});saveQ=p;return p}
 
 /* ---------- UI helpers ---------- */
 let toastT;
@@ -1800,6 +1832,7 @@ function ibChanged(){
   if(!cur)return;
   setBadge(reqIn().length+IB.chats.filter(unread).length+IB.matches.filter(m=>m.status==='pending'&&m.b===cur.uid&&vsFresh(m)).length);
   if(current==='versus'&&!VS)renderVersus();
+  if(current==='home'&&IB.ok.a&&IB.ok.b&&friendUids().join(',')!==homeKey)renderHome();
   if(current==='inbox')renderInbox();
   if(current==='rakan')renderRakan();
   if(current==='ranking'&&rkMode==='friends')renderRanking();
@@ -2063,22 +2096,38 @@ function loadMyCover(){
 }
 
 /* ----- Home ----- */
+let homeKey='';
 function renderHome(){
   const u=getUser();if(!u)return;
-  setAvatar($('#h-av'),u.avatar);$('#h-name').textContent='Hai, '+u.name+'!';
-  $('#hs-pts').textContent=fmt(u.points||0);$('#hs-coin').textContent=fmt(u.coins||0);$('#hs-streak').textContent=curStreak(u);
-  $('#hs-rank').textContent='-';DB.myRank().then(r=>{if(r&&current==='home')$('#hs-rank').textContent='#'+r}).catch(()=>{});
-  const d=$('#home-daily');d.textContent='';
+  setAvatar($('#h-av'),u.avatar);
+  $('#hm-text').placeholder='Apa yang anda fikirkan, '+u.name+'?';
+  const on=isOn();$('#hm-send').disabled=!on;$('#hm-hint').textContent=on?'Dikongsi dengan rakan anda':'Siaran memerlukan akaun online';
+  const st=$('#home-strip');st.textContent='';
+  const pill=(ic,l,v)=>{const p=mk('span','pill');p.innerHTML=icon(ic)+l+' <b>'+v+'</b>';st.appendChild(p);return p};
+  pill('star','PTS',fmt(u.points||0));pill('coin','Syiling',fmt(u.coins||0));pill('flame','Streak',curStreak(u));
+  const rk=pill('trophy','Ranking','-');DB.myRank().then(r=>{if(r&&current==='home')rk.querySelector('b').textContent='#'+r}).catch(()=>{});
   const done=claimedToday(u),day=rewardDay(u);
-  d.append(mk('h3','','Ganjaran Harian'));
-  const b=mk('button','pri',done?'Sudah dituntut. Datang semula esok!':'Tuntut +'+DAILY[day-1]+' syiling (Hari '+day+')');
-  b.style.width='100%';b.disabled=done;b.onclick=()=>{claimDaily();renderHome()};d.appendChild(b);
+  if(!done){const b=mk('button','pri sm','Tuntut +'+DAILY[day-1]+' syiling');b.onclick=()=>{claimDaily();renderHome()};st.appendChild(b)}
   const fd=$('#home-feed');
-  if(!isOn()){fd.textContent='';fd.appendChild(empty('Log masuk online untuk lihat siaran rakan.'));return}
-  const ids=friendUids();
-  if(!ids.length){fd.textContent='';fd.appendChild(empty('Tambah rakan untuk lihat siaran mereka di sini.'));return}
-  renderPosts(fd,ids,2,'Belum ada siaran rakan.',3).catch(()=>{});
+  if(!on){fd.textContent='';return offlineCard(fd)}
+  const ids=friendUids();homeKey=ids.join(',');
+  renderPosts(fd,[cur.uid,...ids],5,'',15).then(()=>{
+    if(!fd.querySelector('.post')&&fd.isConnected){
+      fd.textContent='';
+      const c=mk('div','card feed-empty');
+      c.append(mk('h3','',ids.length?'Belum ada siaran':'Suapan anda masih kosong'),mk('p','mut',ids.length?'Jadi yang pertama berkongsi sesuatu di atas.':'Tambah rakan untuk melihat siaran mereka di sini.'));
+      if(!ids.length){const r=mk('div','row'),b=mk('button','pri','Cari rakan');b.onclick=()=>show('rakan');r.appendChild(b);c.appendChild(r)}
+      fd.appendChild(c);
+    }
+  }).catch(e=>{console.error(e);fd.textContent='';fd.appendChild(empty(errMsg(e)))});
 }
+$('#hm-send').onclick=()=>guard(async()=>{
+  if(!isOn())return;const v=$('#hm-text').value.trim();if(!v)return toast('Tulis sesuatu dahulu');
+  $('#hm-send').disabled=true;
+  try{await F.addDoc(F.collection(F.db,'users',cur.uid,'posts'),{by:cur.uid,text:v.slice(0,300),at:F.serverTimestamp()});$('#hm-text').value='';toast('Siaran dihantar')}
+  finally{$('#hm-send').disabled=false}
+  renderHome();
+});
 function renderProfilePosts(){
   const b=$('#p-posts');
   if(!isOn()){b.textContent='';b.appendChild(empty('Perlu akaun online untuk siaran.'));return}
@@ -2125,7 +2174,19 @@ async function renderWinRank(){
 /* ---------- Versus 1v1 ---------- */
 const VS_TYPES=[['math','Maths'],['addmath','Mat. Tambahan'],['zoo','ZooPedia'],['mytrivia','Malaysian Trivia'],['flag','Teka Bendera']];
 const VS_N=10,VS_T=15000;
-let vsType='math',vsTarget=null,VS=null;
+let vsType='math',vsTarget=null,VS=null,vsHealed=false;
+const VSAPPLIED={},VSPENDING={};
+function vsFlushPaid(){Object.keys(VSPENDING).forEach(k=>{F.setDoc(VSPENDING[k],{paid:true},{merge:true}).then(()=>{delete VSPENDING[k]}).catch(console.error)})}
+// pulihkan kiraan menang/kalah/seri daripada perlawanan yang sudah ditanda 'paid' tetapi simpanan lama gagal
+async function vsHeal(){
+  if(vsHealed===cur.uid||!isOn()||!IB.ok.m)return;vsHealed=cur.uid;
+  let w=0,l=0,d=0;
+  await Promise.all(IB.matches.filter(m=>m.status==='done'&&typeof m.sa==='number'&&typeof m.sb==='number').map(async m=>{
+    try{const sn=await F.getDoc(F.doc(F.db,'matches',m.id,'ans',cur.uid));
+      if(sn.exists()&&sn.data().paid){const mine=m.a===cur.uid?m.sa:m.sb,th=m.a===cur.uid?m.sb:m.sa;if(mine>th)w++;else if(mine<th)l++;else d++}}catch{}}));
+  const u=getUser();if(!u)return;
+  if(w>(u.vw||0)||l>(u.vl||0)||d>(u.vd||0)){u.vw=Math.max(u.vw||0,w);u.vl=Math.max(u.vl||0,l);u.vd=Math.max(u.vd||0,d);await saveUser(u);if(current==='versus')renderVersus()}
+}
 const vsName=t=>(VS_TYPES.find(x=>x[0]===t)||[0,t])[1];
 function vsBuild(type){
   const out=[];
@@ -2246,15 +2307,18 @@ async function vsResult(){
   const ms=vsScore(m,mine),os=vsScore(m,opp),right=vsRight(m,mine);
   const out=ms>os?'win':ms<os?'lose':'draw';
   let gain=0,got=[];
-  if(!st.paid&&st.a.length>=VS_N){
-    st.paid=true;
+  if(!st.paid&&st.a.length>=VS_N&&!VSAPPLIED[cur.uid+m.id]){
+    VSAPPLIED[cur.uid+m.id]=1;
     const u=getUser();
     u.points=(u.points||0)+ms;u.played=(u.played||0)+1;u.seg=segOf(u);u.seg[m.type]=(u.seg[m.type]||0)+ms;touchDay(u);
     gain=Math.floor(ms/COIN_RATE)+(out==='win'?20:0);u.coins=(u.coins||0)+gain;
     const key=out==='win'?'vw':out==='lose'?'vl':'vd';u[key]=(u[key]||0)+1;
     got=checkAch(u,{perfect:right===VS_N});
-    saveUser(u);refreshTop();
-    F.setDoc(st.ref,{paid:true},{merge:true}).catch(console.error);
+    const saved=await saveUser(u);refreshTop();
+    if(saved)F.setDoc(st.ref,{paid:true},{merge:true}).catch(console.error);
+    else VSPENDING[cur.uid+m.id]=st.ref;   // ditanda 'paid' hanya selepas simpanan berjaya
+    st.paid=true;
+    if(VS!==st)return;
   }
   if(m.status!=='done'&&st.oppAns&&st.oppAns.done){
     const sa=m.a===cur.uid?ms:os,sb=m.a===cur.uid?os:ms;
@@ -2312,6 +2376,7 @@ function vsCards(box,withDone){
 }
 function renderVersus(){
   const box=$('#vsl-body');if(!isOn())return offlineCard(box);
+  vsHeal().catch(console.error);
   box.textContent='';
   const u=getUser(),st=mk('div','stats4');
   [[u.vw||0,'Menang'],[u.vl||0,'Kalah'],[u.vd||0,'Seri'],[(u.vw||0)+(u.vl||0)+(u.vd||0)?Math.round(100*(u.vw||0)/((u.vw||0)+(u.vl||0)+(u.vd||0)))+'%':'-','Kadar menang']].forEach(([n,l])=>{
@@ -2403,16 +2468,5 @@ let bootErr=null;
 })();
 </script>
 
-  <script>
-setInterval(function(){
-  document.querySelectorAll('div, a, iframe').forEach(function(el){
-    if(el.textContent && el.textContent.includes('Powered by Netlify')){
-      el.style.display = 'none';
-    }
-  });
-}, 500);
-</script>
-
 </body>
-
 </html>
